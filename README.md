@@ -1,5 +1,5 @@
 # VecFns
-Automatic Vector Math Functions In Zig.
+Automatic vector math functions for your vector structs.
 
 ### Usage
 
