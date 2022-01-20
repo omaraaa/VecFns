@@ -103,7 +103,7 @@ pub fn VecFns(comptime Self: type) type {
             return map2(self, other, _min, .{});
         }
         pub fn eq(self: Self, other: anytype) bool {
-            return GenericVec(N, bool).map2(self, other, _eq, .{}).reduce(_eq, .{});
+            return GenericVec(N, bool).map2(self, other, _eq, .{}).reduce(_and, .{});
         }
         pub fn into(self: Self, comptime VType: type) VType {
             if (comptime N != VType.N) {
@@ -281,6 +281,21 @@ inline fn _min(a: anytype, b: anytype) @TypeOf(a) {
 }
 inline fn _eq(a: anytype, b: anytype) bool {
     return a == b;
+}
+inline fn _and(a: bool, b: bool) bool {
+    return a and b;
+}
+
+test "VecFns.eq" {
+    const V = struct {
+        pub usingnamespace VecFns(@This());
+        x: f32 = 0.5,
+        y: f32 = 0.5,
+    };
+    
+    var v: V = .{};
+    try std.testing.expect(v.eq(0) == false);
+    try std.testing.expect(v.eq(0.5) == false);
 }
 
 test "vec operations" {
