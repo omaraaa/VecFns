@@ -96,10 +96,10 @@ pub fn VecFns(comptime Self: type) type {
         pub fn div(self: Self, other: anytype) Self {
             return map2(self, other, _div, .{});
         }
-        pub fn max(self: Self, other: Self) Self {
+        pub fn max(self: Self, other: anytype) Self {
             return map2(self, other, _max, .{});
         }
-        pub fn min(self: Self, other: Self) Self {
+        pub fn min(self: Self, other: anytype) Self {
             return map2(self, other, _min, .{});
         }
         pub fn eq(self: Self, other: anytype) bool {
