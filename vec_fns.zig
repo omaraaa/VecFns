@@ -294,8 +294,8 @@ test "VecFns.eq" {
     };
     
     var v: V = .{};
-    try std.testing.expect(v.eq(0) == false);
-    try std.testing.expect(v.eq(0.5) == false);
+    try std.testing.expect(!v.eq(0));
+    try std.testing.expect(v.eq(0.5));
 }
 
 test "vec operations" {
