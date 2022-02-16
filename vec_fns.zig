@@ -81,6 +81,10 @@ pub fn VecFns(comptime Self: type) type {
         pub fn sub(self: Self, other: anytype) Self {
             return map2(self, other, _sub, .{});
         }
+        /// Subtraction clamping at zero to prevent underflow of unsigned types
+        pub fn sub0(self: Self, other: anytype) Self {
+            return map2(self, other, _sub0, .{});
+        }
         pub fn lerp(self: Self, other: anytype, a: T) Self {
             return map2(self, other, _lerp, .{a});
         }
@@ -125,6 +129,13 @@ pub fn VecFns(comptime Self: type) type {
         }
         pub fn lte(self: Self, other: anytype) bool {
             return GenericVec(N, bool).map2(self, other, _lte, .{}).reduce(_and, .{});
+        }
+
+        pub fn dot(self: Self, other: anytype) T {
+            return self.mul(other).sum();
+        }
+        pub fn length(self: Self) T {
+            return std.math.sqrt(self.dot(self));
         }
 
         pub fn into(self: Self, comptime VType: type) VType {
@@ -293,6 +304,9 @@ inline fn _mul(a: anytype, b: anytype) @TypeOf(a) {
 inline fn _sub(a: anytype, b: anytype) @TypeOf(a) {
     return a - b;
 }
+inline fn _sub0(a: anytype, b: anytype) @TypeOf(a) {
+    return if (a > b) a - b else 0;
+}
 inline fn _lerp(a: anytype, b: anytype, c: anytype) @TypeOf(a) {
     return a * c + b * (1 - c);
 }
@@ -454,4 +468,18 @@ test "clamp" {
 
     a = MyVec{ .x = 3, .y = 3 };
     try std.testing.expectEqual(a, a.clamp(b, c));
+}
+
+test "sub0" {
+    const MyVec = struct {
+        pub usingnamespace VecFns(@This());
+        x: u32 = 0,
+        y: u32 = 0,
+    };
+
+    const a = MyVec{ .x = 10, .y = 10 };
+    const b = MyVec{ .x = 20, .y = 2 };
+    try std.testing.expectEqual(MyVec{ .x = 0, .y = 8 }, a.sub0(b));
+    const c = MyVec{ .x = 10, .y = 2 };
+    try std.testing.expectEqual(MyVec{ .x = 0, .y = 8 }, a.sub0(c));
 }
