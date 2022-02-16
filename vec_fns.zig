@@ -87,6 +87,9 @@ pub fn VecFns(comptime Self: type) type {
         pub fn sum(self: Self) T {
             return self.reduce(_add, .{});
         }
+        pub fn prod(self: Self) T {
+            return self.reduce(_mul, .{});
+        }
         pub fn divExact(self: Self, other: anytype) Self {
             return map2(self, other, _divExact, .{});
         }
@@ -104,6 +107,9 @@ pub fn VecFns(comptime Self: type) type {
         }
         pub fn min(self: Self, other: anytype) Self {
             return map2(self, other, _min, .{});
+        }
+        pub fn clamp(self: Self, minimum: anytype, maximum: anytype) Self {
+            return map2(self, minimum, _max, .{}).map2(maximum, _min, .{});
         }
         pub fn eq(self: Self, other: anytype) bool {
             return GenericVec(N, bool).map2(self, other, _eq, .{}).reduce(_and, .{});
@@ -421,4 +427,31 @@ test "ordering" {
     try std.testing.expect(a.lt(MyVec{ .x = 7, .y = 1 }));
     try std.testing.expect(a.lte(MyVec{ .x = 0, .y = 0 })); // equal case
     try std.testing.expect(a.lte(MyVec{ .x = 1, .y = 0 }));
+}
+
+test "prod" {
+    const MyVec = struct {
+        pub usingnamespace VecFns(@This());
+        x: i32 = 0,
+        y: i32 = 0,
+    };
+
+    const a = MyVec{ .x = 10, .y = 7 };
+    try std.testing.expectEqual(@as(i32, 70), a.prod());
+}
+
+test "clamp" {
+    const MyVec = struct {
+        pub usingnamespace VecFns(@This());
+        x: i32 = 0,
+        y: i32 = 0,
+    };
+
+    var a = MyVec{ .x = 10, .y = -10 };
+    const b = MyVec{ .x = 0, .y = 0 };
+    const c = MyVec{ .x = 5, .y = 5 };
+    try std.testing.expectEqual(MyVec{ .x = 5, .y = 0}, a.clamp(b, c));
+
+    a = MyVec{ .x = 3, .y = 3 };
+    try std.testing.expectEqual(a, a.clamp(b, c));
 }
