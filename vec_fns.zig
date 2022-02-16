@@ -93,6 +93,9 @@ pub fn VecFns(comptime Self: type) type {
         pub fn divFloor(self: Self, other: anytype) Self {
             return map2(self, other, _divFloor, .{});
         }
+        pub fn divTrunc(self: Self, other: anytype) Self {
+            return map2(self, other, _divTrunc, .{});
+        }
         pub fn div(self: Self, other: anytype) Self {
             return map2(self, other, _div, .{});
         }
@@ -105,6 +108,19 @@ pub fn VecFns(comptime Self: type) type {
         pub fn eq(self: Self, other: anytype) bool {
             return GenericVec(N, bool).map2(self, other, _eq, .{}).reduce(_and, .{});
         }
+        pub fn gt(self: Self, other: anytype) bool {
+            return GenericVec(N, bool).map2(self, other, _gt, .{}).reduce(_and, .{});
+        }
+        pub fn gte(self: Self, other: anytype) bool {
+            return GenericVec(N, bool).map2(self, other, _gte, .{}).reduce(_and, .{});
+        }
+        pub fn lt(self: Self, other: anytype) bool {
+            return GenericVec(N, bool).map2(self, other, _lt, .{}).reduce(_and, .{});
+        }
+        pub fn lte(self: Self, other: anytype) bool {
+            return GenericVec(N, bool).map2(self, other, _lte, .{}).reduce(_and, .{});
+        }
+
         pub fn into(self: Self, comptime VType: type) VType {
             if (comptime N != VType.N) {
                 @compileError("Can't convert into type. Both vectors must have the same dimension.");
@@ -173,6 +189,16 @@ pub fn VecFns(comptime Self: type) type {
         }
         pub fn getArrayType() type {
             return [N]T;
+        }
+
+        /// Return a GenericVec containing the values indicated by `fields`.
+        /// All selected fields must have single-character names (e.g. `x`)
+        pub fn swizzle(self: Self, comptime fields: []const u8) GenericVec(fields.len, T) {
+            var ret: GenericVec(fields.len, T) = undefined;
+            inline for (fields) |member, i| {
+                ret.data[i] = @field(self, &[_]u8{member});
+            }
+            return ret;
         }
     };
 }
@@ -270,6 +296,9 @@ inline fn _divExact(a: anytype, b: anytype) @TypeOf(a) {
 inline fn _divFloor(a: anytype, b: anytype) @TypeOf(a) {
     return @divFloor(a, b);
 }
+inline fn _divTrunc(a: anytype, b: anytype) @TypeOf(a) {
+    return @divTrunc(a, b);
+}
 inline fn _div(a: anytype, b: anytype) @TypeOf(a) {
     return a / b;
 }
@@ -284,6 +313,18 @@ inline fn _eq(a: anytype, b: anytype) bool {
 }
 inline fn _and(a: bool, b: bool) bool {
     return a and b;
+}
+inline fn _gt(a: anytype, b: anytype) bool {
+    return a > b;
+}
+inline fn _gte(a: anytype, b: anytype) bool {
+    return a >= b;
+}
+inline fn _lt(a: anytype, b: anytype) bool {
+    return a < b;
+}
+inline fn _lte(a: anytype, b: anytype) bool {
+    return a <= b;
 }
 
 test "VecFns.eq" {
@@ -322,4 +363,62 @@ test "vec operations" {
     var a3 = a2.add(a2).mul(a2).divExact(a2).sub(a2).into(MyVec2);
     var b3 = b2.add(b2).mul(b2).div(b2).sub(b2);
     try std.testing.expect(a3.eq(b3));
+}
+
+test "division with signed integers" {
+    // Note that div won't compile with signed integers and divExact will
+    //  produce a runtime panic if there is a remainder.  So when using
+    //  signed integers you should probably want to use either divFloor or
+    //  divTrunc.  If all values are positive these two will behave the same.
+    //  However when negative values are in play they will produce different
+    //  results:
+    const MyVec = struct {
+        pub usingnamespace VecFns(@This());
+        x: i32 = 0,
+        y: i32 = 0,
+    };
+
+    // What happens when we divide -7 by 2?
+    const a = MyVec{ .x = -7, .y = 1};
+    const b = MyVec{ .x = 2, .y = 1 };
+
+    // divFloor rounds towards negative infinity
+    const floor = a.divFloor(b);
+    try std.testing.expect(floor.x == -4 and floor.y == 1);
+
+    // while divTrunc behaves the way you probably expect integer division to work
+    const trunc = a.divTrunc(b);
+    try std.testing.expect(trunc.x == -3 and trunc.y == 1);
+}
+
+test "swizzle" {
+    const MyVec = struct {
+        pub usingnamespace VecFns(@This());
+        x: i32 = 0,
+        y: i32 = 0,
+    };
+
+    var a: MyVec = .{ .x=7, .y=12 };
+    var b = a.swizzle("yxxyx");
+    try std.testing.expectEqual(a.y, b.data[0]);
+    try std.testing.expectEqual(a.x, b.data[1]);
+    try std.testing.expectEqual(a.x, b.data[2]);
+    try std.testing.expectEqual(a.y, b.data[3]);
+    try std.testing.expectEqual(a.x, b.data[4]);
+}
+
+test "ordering" {
+    const MyVec = struct {
+        pub usingnamespace VecFns(@This());
+        x: i32 = 0,
+        y: i32 = 0,
+    };
+
+    var a: MyVec = .{ .x = 0, .y = 0 };
+    try std.testing.expect(a.gt(MyVec{ .x = -1, .y = -2 }));
+    try std.testing.expect(a.gte(MyVec{ .x = 0, .y = 0 })); // equal case
+    try std.testing.expect(a.gte(MyVec{ .x = -1, .y = 0 }));
+    try std.testing.expect(a.lt(MyVec{ .x = 7, .y = 1 }));
+    try std.testing.expect(a.lte(MyVec{ .x = 0, .y = 0 })); // equal case
+    try std.testing.expect(a.lte(MyVec{ .x = 1, .y = 0 }));
 }
