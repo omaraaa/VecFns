@@ -29,140 +29,71 @@ const Vec2f = struct {
 The following functions will be in the namespace of your struct type after including `VecFns`.
 
 ```zig
+// Applies a function `f` to the vector. `args` is any additional arguments to be passed to `f`.
 fn map(self: Self, comptime f: anytype, args: anytype) Self
-```
 
-Applies a function `f` to the vector. `args` is any additional arguments to be passed to `f`.
-
-```zig
+// Same as `map` but without args argument.
 fn apply(self: Self, comptime f: anytype) Self
-```
 
-Same as `map` but without args argument.
-
-```zig
+// Applies a function `f` to 2 vectors.
 fn map2(a: anytype, b: anytype, comptime f: anytype, args: anytype) Self
-```
 
-Applies a function `f` to 2 vectors.
-
-```zig
+// Same as `map`, reduces the vector into a single value.
 fn reduce(self: Self, comptime f: anytype, args: anytype) T
-```
 
-same as `map`, reduces the vector into a single value.
-
-```zig
+// Adds either 2 vectors or a vector and a scalar value.
 fn add(self: Self, other: anytype) Self
-```
 
-adds either a 2 vectors or a vector and a scalar value.
-
-```zig
+// Subtracts either 2 vectors or a vector and a scalar value.
 fn sub(self: Self, other: anytype) Self
-```
 
-subtracts either a 2 vectors or a vector and a scalar value.
-
-```zig
+// Multiplies either 2 vectors or a vector and a scalar value.
 fn mul(self: Self, other: anytype) Self
-```
 
-multiplies either a 2 vectors or a vector and a scalar value.
-
-```zig
+// Divides either 2 vectors or a vector and a scalar value.
 fn div(self: Self, other: anytype) Self
-```
 
-divides either a 2 vectors or a vector and a scalar value.
-
-```zig
+// Same as div, but uses `@divExact`
 fn divExact(self: Self, other: anytype) Self
-```
 
-same as div, but uses `@divExact`
-
-```zig
+// Same as div, but uses `@divFloor`
 fn divFloor(self: Self, other: anytype) Self
-```
 
-same as div, but uses `@divFloor`
-
-```zig
+// Returns the sum of the vector.
 fn sum(self: Self) T
-```
 
-returns the sum of the vector.
-
-```zig
+// Given 2 vectors or a vector and a scalar value, returns a vector with the maximum between the 2.
 fn max(self: Self, other: Self) Self
-```
 
-given 2 vectors or a vector and a scalar value, returns a vector with the maximum between the 2.
-
-```zig
+// Given 2 vectors or a vector and a scalar value, returns a vector with the minimum between the 2.
 fn min(self: Self, other: Self) Self
-```
 
-given 2 vectors or a vector and a scalar value, returns a vector with the minimum between the 2.
-
-```zig
+// Checks if the vector is equal to `other` (can be a vector or a scalar)
 fn eq(self: Self, other: anytype) bool
-```
 
-checks if the vector is equal to `other` (can be a vector or a scalar)
-
-```zig
+// Attempts to covert/cast the vector into another vector type. 
 fn into(self: Self, comptime VType: type) VType
-```
 
-attempts to covert/cast the vector into another vector type. 
-
-```zig
+// Joins two vector into a vector size 2\*N.
 fn join(self: Self, other: Self) [2 * N]T
-```
 
-joins two vector into a vector size 2\*N.
-
-```zig
+// Returns the zero vector.
 fn zero() Self
-```
 
-returns the zero vector.
-
-```zig
+// Returns a vector where all values are `n`.
 fn all(n: anytype) Self
-```
 
-returns a vector where all values are `n`.
-
-```zig
+// Coverts the vector into an array of type `[N]T`.
 fn toArray(self: Self) [N]T
-```
 
-coverts the vector into an array of type `[N]T`.
-
-```zig
+// Create a vector from an array.
 fn fromArray(array: [N]T) Self
-```
 
-create a vector from an array.
-
-```zig
+// Length of the vector. (Float only)
 fn len(self: Self) T
-```
 
-length of the vector (float only).
-
-```zig
+// Distance between 2 vectors. (Float only)
 fn distance(self: Self, other: anytype) T
-```
 
-distance between 2 vectors (float only).
-
-```zig
+// Normalizes the vector values to [0, 1]. (Float only)
 fn norm(self: Self) Self
-```
-
-normalizes the vector (float ony).
-
