@@ -3,29 +3,29 @@ const std = @import("std");
 const meta = std.meta;
 
 pub fn VecFns(comptime Self: type) type {
-    comptime var N = @typeInfo(Self).Struct.fields.len;
-    comptime var T = @typeInfo(Self).Struct.fields[0].field_type;
+    comptime var NN = @typeInfo(Self).Struct.fields.len;
+    comptime var TT = @typeInfo(Self).Struct.fields[0].field_type;
     comptime {
-        if (@typeInfo(T) == .Array) {
-            if (N > 1) {
+        if (@typeInfo(TT) == .Array) {
+            if (NN > 1) {
                 @compileError("Generic Vec can only have 1 field.");
             }
-            N = @typeInfo(T).Array.len;
-            T = @typeInfo(T).Array.child;
+            NN = @typeInfo(TT).Array.len;
+            TT = @typeInfo(TT).Array.child;
         } else {
             inline for (@typeInfo(Self).Struct.fields) |f| {
-                if (T != f.field_type) {
+                if (TT != f.field_type) {
                     @compileError("All fields of a Vec must be of the same type");
                 }
             }
         }
     }
     return struct {
-        pub usingnamespace VecFloat(Self, T);
-        pub usingnamespace VecToArray(Self, N, T);
+        pub usingnamespace VecFloat(Self, TT);
+        pub usingnamespace VecToArray(Self, NN, TT);
 
-        pub const T = T;
-        pub const N = N;
+        pub const T = TT;
+        pub const N = NN;
 
         pub fn map(self: Self, comptime f: anytype, args: anytype) Self {
             var r: getArrayType() = undefined;
@@ -242,16 +242,12 @@ fn VecToArray(comptime Self: type, comptime N: comptime_int, comptime T: type) t
     } else {
         return struct {
             pub fn toArray(self: Self) [N]T {
-                if (@sizeOf([N]T) == @sizeOf(Self)) {
-                    return @bitCast([N]T, self);
-                } else {
-                    var r: [N]T = undefined;
-                    comptime var i = 0;
-                    inline while (i < N) : (i += 1) {
-                        r[i] = @field(self, @typeInfo(Self).Struct.fields[i].name);
-                    }
-                    return r;
+                var r: [N]T = undefined;
+                comptime var i = 0;
+                inline while (i < N) : (i += 1) {
+                    r[i] = @field(self, @typeInfo(Self).Struct.fields[i].name);
                 }
+                return r;
             }
             pub fn fromArray(array: [N]T) Self {
                 var r: Self = undefined;
@@ -353,7 +349,7 @@ test "VecFns.eq" {
         x: f32 = 0.5,
         y: f32 = 0.5,
     };
-    
+
     var v: V = .{};
     try std.testing.expect(!v.eq(0));
     try std.testing.expect(v.eq(0.5));
@@ -399,7 +395,7 @@ test "division with signed integers" {
     };
 
     // What happens when we divide -7 by 2?
-    const a = MyVec{ .x = -7, .y = 1};
+    const a = MyVec{ .x = -7, .y = 1 };
     const b = MyVec{ .x = 2, .y = 1 };
 
     // divFloor rounds towards negative infinity
@@ -418,7 +414,7 @@ test "swizzle" {
         y: i32 = 0,
     };
 
-    var a: MyVec = .{ .x=7, .y=12 };
+    var a: MyVec = .{ .x = 7, .y = 12 };
     var b = a.swizzle("yxxyx");
     try std.testing.expectEqual(a.y, b.data[0]);
     try std.testing.expectEqual(a.x, b.data[1]);
@@ -464,7 +460,7 @@ test "clamp" {
     var a = MyVec{ .x = 10, .y = -10 };
     const b = MyVec{ .x = 0, .y = 0 };
     const c = MyVec{ .x = 5, .y = 5 };
-    try std.testing.expectEqual(MyVec{ .x = 5, .y = 0}, a.clamp(b, c));
+    try std.testing.expectEqual(MyVec{ .x = 5, .y = 0 }, a.clamp(b, c));
 
     a = MyVec{ .x = 3, .y = 3 };
     try std.testing.expectEqual(a, a.clamp(b, c));
