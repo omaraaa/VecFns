@@ -4,7 +4,7 @@ const meta = std.meta;
 
 pub fn VecFns(comptime Self: type) type {
     comptime var NN = @typeInfo(Self).Struct.fields.len;
-    comptime var TT = @typeInfo(Self).Struct.fields[0].field_type;
+    comptime var TT = @typeInfo(Self).Struct.fields[0].type;
     comptime {
         if (@typeInfo(TT) == .Array) {
             if (NN > 1) {
@@ -14,7 +14,7 @@ pub fn VecFns(comptime Self: type) type {
             TT = @typeInfo(TT).Array.child;
         } else {
             inline for (@typeInfo(Self).Struct.fields) |f| {
-                if (TT != f.field_type) {
+                if (TT != f.type) {
                     @compileError("All fields of a Vec must be of the same type");
                 }
             }
@@ -30,11 +30,10 @@ pub fn VecFns(comptime Self: type) type {
         pub fn map(self: Self, comptime f: anytype, args: anytype) Self {
             var r: getArrayType() = undefined;
             var v1 = self.toArray();
-            comptime var opts: std.builtin.CallOptions = .{};
 
             comptime var i = 0;
             inline while (i < N) : (i += 1) {
-                r[i] = @call(opts, f, .{v1[i]} ++ args);
+                r[i] = @call(.auto, f, .{v1[i]} ++ args);
             }
             return Self.fromArray(r);
         }
@@ -46,28 +45,26 @@ pub fn VecFns(comptime Self: type) type {
             var v1 = a.toArray();
             comptime var other_info = @typeInfo(@TypeOf(b));
             comptime var isStruct = other_info == .Struct;
-            comptime var opts: std.builtin.CallOptions = .{};
             if (isStruct) {
                 var v2 = b.toArray();
                 comptime var i = 0;
                 inline while (i < N) : (i += 1) {
-                    r[i] = @call(opts, f, .{ v1[i], v2[i] } ++ args);
+                    r[i] = @call(.auto, f, .{ v1[i], v2[i] } ++ args);
                 }
             } else {
                 comptime var i = 0;
                 inline while (i < N) : (i += 1) {
-                    r[i] = @call(opts, f, .{ v1[i], b } ++ args);
+                    r[i] = @call(.auto, f, .{ v1[i], b } ++ args);
                 }
             }
             return Self.fromArray(r);
         }
         pub fn reduce(self: Self, comptime f: anytype, args: anytype) T {
-            comptime var opts: std.builtin.CallOptions = .{};
             var v1 = self.toArray();
             var r: T = v1[0];
             comptime var i = 1;
             inline while (i < N) : (i += 1) {
-                r = @call(opts, f, .{ r, v1[i] } ++ args);
+                r = @call(.auto, f, .{ r, v1[i] } ++ args);
             }
 
             return r;
@@ -186,10 +183,10 @@ pub fn VecFns(comptime Self: type) type {
             var array: [2 * N]T = undefined;
             var v1 = self.toArray();
             var v2 = other.toArray();
-            for (v1) |v, i| {
+            for (v1, 0..) |v, i| {
                 array[i] = v;
             }
-            for (v2) |v, i| {
+            for (v2, 0..) |v, i| {
                 array[N + i] = v;
             }
             return array;
@@ -212,7 +209,7 @@ pub fn VecFns(comptime Self: type) type {
         /// All selected fields must have single-character names (e.g. `x`)
         pub fn swizzle(self: Self, comptime fields: []const u8) GenericVec(fields.len, T) {
             var ret: GenericVec(fields.len, T) = undefined;
-            inline for (fields) |member, i| {
+            inline for (fields, 0..) |member, i| {
                 ret.data[i] = @field(self, &[_]u8{member});
             }
             return ret;
@@ -228,7 +225,7 @@ pub fn GenericVec(comptime N: comptime_int, comptime T: type) type {
 }
 
 fn VecToArray(comptime Self: type, comptime N: comptime_int, comptime T: type) type {
-    if (@typeInfo(Self).Struct.fields[0].field_type == [N]T) {
+    if (@typeInfo(Self).Struct.fields[0].type == [N]T) {
         return struct {
             pub fn toArray(self: Self) [N]T {
                 return @field(self, @typeInfo(Self).Struct.fields[0].name);
@@ -251,7 +248,7 @@ fn VecToArray(comptime Self: type, comptime N: comptime_int, comptime T: type) t
             }
             pub fn fromArray(array: [N]T) Self {
                 var r: Self = undefined;
-                inline for (meta.fields(Self)) |f, i| {
+                inline for (meta.fields(Self), 0..) |f, i| {
                     const name = f.name;
                     @field(r, name) = array[i];
                 }
