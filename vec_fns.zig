@@ -46,7 +46,8 @@ pub fn VecFns(comptime Self: type) type {
             comptime var other_info = @typeInfo(@TypeOf(b));
             comptime var isStruct = other_info == .Struct;
             if (isStruct) {
-                var v2 = b.toArray();
+                comptime var isTuple = other_info.Struct.is_tuple;
+                var v2 = if (!isTuple) b.toArray() else b;
                 comptime var i = 0;
                 inline while (i < N) : (i += 1) {
                     r[i] = @call(.auto, f, .{ v1[i], v2[i] } ++ args);
@@ -140,7 +141,7 @@ pub fn VecFns(comptime Self: type) type {
                 @compileError("Can't convert into type. Both vectors must have the same dimension.");
             }
             if (comptime T == VType.T and @sizeOf(Self) == @sizeOf(VType)) {
-                return @bitCast(VType, self);
+                return @as(VType, @bitCast(self));
             }
 
             var v = self.toArray();
@@ -152,10 +153,10 @@ pub fn VecFns(comptime Self: type) type {
                         .Float => {
                             switch (@typeInfo(VType.T)) {
                                 .Float => {
-                                    r[i] = @floatCast(VType.T, v[i]);
+                                    r[i] = @as(VType.T, @floatCast(v[i]));
                                 },
                                 .Int => {
-                                    r[i] = @floatToInt(VType.T, v[i]);
+                                    r[i] = @as(VType.T, @intFromFloat(v[i]));
                                 },
                                 else => unreachable,
                             }
@@ -163,10 +164,10 @@ pub fn VecFns(comptime Self: type) type {
                         .Int => {
                             switch (@typeInfo(VType.T)) {
                                 .Float => {
-                                    r[i] = @intToFloat(VType.T, v[i]);
+                                    r[i] = @as(VType.T, @floatFromInt(v[i]));
                                 },
                                 .Int => {
-                                    r[i] = @intCast(VType.T, v[i]);
+                                    r[i] = @as(VType.T, @intCast(v[i]));
                                 },
                                 else => unreachable,
                             }
@@ -196,7 +197,7 @@ pub fn VecFns(comptime Self: type) type {
         }
         pub fn all(n: anytype) Self {
             var r: getArrayType() = undefined;
-            inline for (r) |*e| {
+            for (&r) |*e| {
                 e.* = n;
             }
             return Self.fromArray(r);
@@ -213,6 +214,30 @@ pub fn VecFns(comptime Self: type) type {
                 ret.data[i] = @field(self, &[_]u8{member});
             }
             return ret;
+        }
+
+        pub fn set(self: Self, n: anytype) Self {
+            return map2(self, n, _set, .{});
+        }
+
+        pub fn from(b: anytype) Self {
+            var r: getArrayType() = undefined;
+            comptime var other_info = @typeInfo(@TypeOf(b));
+            comptime var isStruct = other_info == .Struct;
+            if (isStruct) {
+                comptime var isTuple = other_info.Struct.is_tuple;
+                var v2 = if (!isTuple) b.toArray() else b;
+                comptime var i = 0;
+                inline while (i < N) : (i += 1) {
+                    r[i] = v2[i];
+                }
+            } else {
+                comptime var i = 0;
+                inline while (i < N) : (i += 1) {
+                    r[i] = b;
+                }
+            }
+            return Self.fromArray(r);
         }
     };
 }
@@ -254,6 +279,14 @@ fn VecToArray(comptime Self: type, comptime N: comptime_int, comptime T: type) t
                 }
                 return r;
             }
+            pub fn fromTuple(tuple: anytype) Self {
+                var r: Self = undefined;
+                inline for (meta.fields(Self), 0..) |f, i| {
+                    const name = f.name;
+                    @field(r, name) = tuple[i];
+                }
+                return r;
+            }
         };
     }
 }
@@ -276,9 +309,16 @@ fn VecFloat(comptime Self: type, comptime T: type) type {
                     return Self.zero();
                 }
             }
+            pub fn abs(self: Self) Self {
+                return self.apply(fabs);
+            }
         };
     } else {
-        return struct {};
+        return struct {
+            pub fn abs(self: Self) Self {
+                return self.apply(std.math.absInt);
+            }
+        };
     }
 }
 
@@ -340,6 +380,14 @@ inline fn _lte(a: anytype, b: anytype) bool {
     return a <= b;
 }
 
+inline fn _set(_: anytype, b: anytype) @TypeOf(b) {
+    return b;
+}
+
+inline fn fabs(x: anytype) @TypeOf(x) {
+    return @fabs(x);
+}
+
 test "VecFns.eq" {
     const V = struct {
         pub usingnamespace VecFns(@This());
@@ -359,7 +407,7 @@ test "vec operations" {
         y: i32 = 0,
     };
 
-    const MyVec2 = packed struct {
+    const MyVec2 = extern struct {
         pub usingnamespace VecFns(@This());
         x: f32 = 0,
         y: f32 = 0,
