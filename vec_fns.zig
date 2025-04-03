@@ -3,17 +3,17 @@ const std = @import("std");
 const meta = std.meta;
 
 pub fn VecFns(comptime Self: type) type {
-    comptime var NN = @typeInfo(Self).Struct.fields.len;
-    comptime var TT = @typeInfo(Self).Struct.fields[0].type;
+    comptime var NN = @typeInfo(Self).@"struct".fields.len;
+    comptime var TT = @typeInfo(Self).@"struct".fields[0].type;
     comptime {
-        if (@typeInfo(TT) == .Array) {
+        if (@typeInfo(TT) == .array) {
             if (NN > 1) {
                 @compileError("Generic Vec can only have 1 field.");
             }
-            NN = @typeInfo(TT).Array.len;
-            TT = @typeInfo(TT).Array.child;
+            NN = @typeInfo(TT).array.len;
+            TT = @typeInfo(TT).array.child;
         } else {
-            inline for (@typeInfo(Self).Struct.fields) |f| {
+            for (@typeInfo(Self).@"struct".fields) |f| {
                 if (TT != f.type) {
                     @compileError("All fields of a Vec must be of the same type");
                 }
@@ -29,7 +29,7 @@ pub fn VecFns(comptime Self: type) type {
 
         pub fn map(self: Self, comptime f: anytype, args: anytype) Self {
             var r: getArrayType() = undefined;
-            var v1 = self.toArray();
+            const v1 = self.toArray();
 
             comptime var i = 0;
             inline while (i < N) : (i += 1) {
@@ -42,12 +42,12 @@ pub fn VecFns(comptime Self: type) type {
         }
         pub fn map2(a: anytype, b: anytype, comptime f: anytype, args: anytype) Self {
             var r: getArrayType() = undefined;
-            var v1 = a.toArray();
-            comptime var other_info = @typeInfo(@TypeOf(b));
-            comptime var isStruct = other_info == .Struct;
+            const v1 = a.toArray();
+            const other_info = @typeInfo(@TypeOf(b));
+            const isStruct = other_info == .@"struct";
             if (isStruct) {
-                comptime var isTuple = other_info.Struct.is_tuple;
-                var v2 = if (!isTuple) b.toArray() else b;
+                const isTuple = other_info.@"struct".is_tuple;
+                const v2 = if (!isTuple) b.toArray() else b;
                 comptime var i = 0;
                 inline while (i < N) : (i += 1) {
                     r[i] = @call(.auto, f, .{ v1[i], v2[i] } ++ args);
@@ -61,7 +61,7 @@ pub fn VecFns(comptime Self: type) type {
             return Self.fromArray(r);
         }
         pub fn reduce(self: Self, comptime f: anytype, args: anytype) T {
-            var v1 = self.toArray();
+            const v1 = self.toArray();
             var r: T = v1[0];
             comptime var i = 1;
             inline while (i < N) : (i += 1) {
@@ -144,29 +144,29 @@ pub fn VecFns(comptime Self: type) type {
                 return @as(VType, @bitCast(self));
             }
 
-            var v = self.toArray();
+            const v = self.toArray();
             var r: VType.getArrayType() = undefined;
             comptime var i = 0;
             inline while (i < N) : (i += 1) {
                 if (comptime T != VType.T) {
                     switch (@typeInfo(T)) {
-                        .Float => {
+                        .float => {
                             switch (@typeInfo(VType.T)) {
-                                .Float => {
+                                .float => {
                                     r[i] = @as(VType.T, @floatCast(v[i]));
                                 },
-                                .Int => {
+                                .int => {
                                     r[i] = @as(VType.T, @intFromFloat(v[i]));
                                 },
                                 else => unreachable,
                             }
                         },
-                        .Int => {
+                        .int => {
                             switch (@typeInfo(VType.T)) {
-                                .Float => {
+                                .float => {
                                     r[i] = @as(VType.T, @floatFromInt(v[i]));
                                 },
-                                .Int => {
+                                .int => {
                                     r[i] = @as(VType.T, @intCast(v[i]));
                                 },
                                 else => unreachable,
@@ -182,8 +182,8 @@ pub fn VecFns(comptime Self: type) type {
         }
         pub fn join(self: Self, other: Self) [2 * N]T {
             var array: [2 * N]T = undefined;
-            var v1 = self.toArray();
-            var v2 = other.toArray();
+            const v1 = self.toArray();
+            const v2 = other.toArray();
             for (v1, 0..) |v, i| {
                 array[i] = v;
             }
@@ -222,11 +222,11 @@ pub fn VecFns(comptime Self: type) type {
 
         pub fn from(b: anytype) Self {
             var r: getArrayType() = undefined;
-            comptime var other_info = @typeInfo(@TypeOf(b));
-            comptime var isStruct = other_info == .Struct;
+            const other_info = @typeInfo(@TypeOf(b));
+            const isStruct = other_info == .@"struct";
             if (isStruct) {
-                comptime var isTuple = other_info.Struct.is_tuple;
-                var v2 = if (!isTuple) b.toArray() else b;
+                const isTuple = other_info.@"struct".is_tuple;
+                const v2 = if (!isTuple) b.toArray() else b;
                 comptime var i = 0;
                 inline while (i < N) : (i += 1) {
                     r[i] = v2[i];
@@ -250,14 +250,14 @@ pub fn GenericVec(comptime N: comptime_int, comptime T: type) type {
 }
 
 fn VecToArray(comptime Self: type, comptime N: comptime_int, comptime T: type) type {
-    if (@typeInfo(Self).Struct.fields[0].type == [N]T) {
+    if (@typeInfo(Self).@"struct".fields[0].type == [N]T) {
         return struct {
             pub fn toArray(self: Self) [N]T {
-                return @field(self, @typeInfo(Self).Struct.fields[0].name);
+                return @field(self, @typeInfo(Self).@"struct".fields[0].name);
             }
             pub fn fromArray(array: [N]T) Self {
                 var r: Self = undefined;
-                @field(r, @typeInfo(Self).Struct.fields[0].name) = array;
+                @field(r, @typeInfo(Self).@"struct".fields[0].name) = array;
                 return r;
             }
         };
@@ -267,7 +267,7 @@ fn VecToArray(comptime Self: type, comptime N: comptime_int, comptime T: type) t
                 var r: [N]T = undefined;
                 comptime var i = 0;
                 inline while (i < N) : (i += 1) {
-                    r[i] = @field(self, @typeInfo(Self).Struct.fields[i].name);
+                    r[i] = @field(self, @typeInfo(Self).@"struct".fields[i].name);
                 }
                 return r;
             }
@@ -302,7 +302,7 @@ fn VecFloat(comptime Self: type, comptime T: type) type {
                 return std.math.sqrt(s.mul(s).sum());
             }
             pub fn norm(self: Self) Self {
-                var l = self.len();
+                const l = self.len();
                 if (l > 0 or l < 0) {
                     return self.div(l);
                 } else {
@@ -324,7 +324,7 @@ fn VecFloat(comptime Self: type, comptime T: type) type {
 
 fn isFloat(comptime t: type) bool {
     return switch (@typeInfo(t)) {
-        .Float, .ComptimeFloat => true,
+        .float, .comptime_float => true,
         else => false,
     };
 }
@@ -385,7 +385,7 @@ inline fn _set(_: anytype, b: anytype) @TypeOf(b) {
 }
 
 inline fn fabs(x: anytype) @TypeOf(x) {
-    return @fabs(x);
+    return @abs(x);
 }
 
 test "VecFns.eq" {
@@ -422,7 +422,7 @@ test "vec operations" {
     try std.testing.expect(b2.x == -1 and b2.y == -1);
 
     var a3 = a2.add(a2).mul(a2).divExact(a2).sub(a2).into(MyVec2);
-    var b3 = b2.add(b2).mul(b2).div(b2).sub(b2);
+    const b3 = b2.add(b2).mul(b2).div(b2).sub(b2);
     try std.testing.expect(a3.eq(b3));
 }
 
@@ -460,7 +460,7 @@ test "swizzle" {
     };
 
     var a: MyVec = .{ .x = 7, .y = 12 };
-    var b = a.swizzle("yxxyx");
+    const b = a.swizzle("yxxyx");
     try std.testing.expectEqual(a.y, b.data[0]);
     try std.testing.expectEqual(a.x, b.data[1]);
     try std.testing.expectEqual(a.x, b.data[2]);
