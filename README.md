@@ -1,4 +1,4 @@
-# VecFns
+# VecFns - [RIP](https://ziglang.org/download/0.15.1/release-notes.html#usingnamespace-Removed)
 Automatic vector math functions for your vector structs.
 
 ### Usage
